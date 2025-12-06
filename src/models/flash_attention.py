@@ -29,13 +29,11 @@ class FlashSelfAttention(nn.Module):
             cos, sin = self.rotary_emb(k, seq_len=total_seq_len)
         except TypeError:
             cos, sin = self.rotary_emb(k)
-        cos = cos[position_ids].unsqueeze(1)
-        sin = sin[position_ids].unsqueeze(1)
         q_head = q[..., :rotary_dim]
         k_head = k[..., :rotary_dim]
         q_tail = q[..., rotary_dim:]
         k_tail = k[..., rotary_dim:]
-        q_rot, k_rot = apply_rotary_pos_emb(q_head, k_head, cos, sin)
+        q_rot, k_rot = apply_rotary_pos_emb(q_head, k_head, cos, sin, position_ids)
         q_out = torch.cat([q_rot.to(dtype), q_tail], dim=-1)
         k_out = torch.cat([k_rot.to(dtype), k_tail], dim=-1)
         return q_out, k_out
