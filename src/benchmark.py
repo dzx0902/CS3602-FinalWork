@@ -21,7 +21,7 @@ def measure_tpot_and_throughput(model, next_token, past, attention_mask, max_new
     total_time = 0.0
     for i in range(max_new_tokens - 1):
         start = time.perf_counter()
-        outputs = model(input_ids=next_token, attention_mask=attention_mask, past_key_values=past, use_cache=True, return_dict=True)
+        outputs = model(input_ids=next_token, attention_mask=None, past_key_values=past, use_cache=True, return_dict=True)
         logits = outputs.logits[:, -1, :]
         next_token = torch.argmax(logits, dim=-1, keepdim=True)
         past = outputs.past_key_values

@@ -8,7 +8,17 @@ class NeoXFlashAttentionAdapter(nn.Module):
         super().__init__()
         self.flash = FlashSelfAttention(hidden_size, num_heads)
 
-    def forward(self, hidden_states, attention_mask=None, layer_past=None, use_cache=False, output_attentions=False):
+    def forward(
+        self,
+        hidden_states,
+        attention_mask=None,
+        head_mask=None,
+        layer_past=None,
+        use_cache=False,
+        output_attentions=False,
+        position_ids=None,
+        **kwargs,
+    ):
         out, present = self.flash(hidden_states, past_key_value=layer_past, use_cache=use_cache)
         if output_attentions:
             return out, present, None
