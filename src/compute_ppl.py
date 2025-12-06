@@ -7,15 +7,37 @@ from models.pythia_baseline_model import PythiaBaselineModel
 from models.pythia_flash_model import PythiaFlashModel
 from utils import get_device, set_reproducibility
 
+def _safe_text(ex):
+    for key in ("text", "passage", "content"):
+        if key in ex and isinstance(ex[key], str):
+            return ex[key]
+    return str(ex)
+
+def _load_pg19(split: str):
+    last_err = None
+    for cfg in (None, "plain_text", "pg19"):
+        try:
+            if cfg is None:
+                return load_dataset("pg19", split=split)
+            else:
+                return load_dataset("pg19", cfg, split=split)
+        except Exception as e:
+            last_err = e
+            continue
+    raise last_err
+
 def eval_dataset(model, tokenizer, name: str, split: str, max_samples: int = 128, max_length: int = 512, config_name: str = None):
-    ds = load_dataset(name, config_name, split=split) if config_name else load_dataset(name, split=split)
+    if name == "pg19":
+        ds = _load_pg19(split)
+    else:
+        ds = load_dataset(name, config_name, split=split) if config_name else load_dataset(name, split=split)
     losses = []
     count = 0
     model.eval()
     for ex in ds:
         if count >= max_samples:
             break
-        text = ex["text"] if "text" in ex else str(ex)
+        text = _safe_text(ex)
         enc = tokenizer(text, return_tensors="pt", truncation=True, max_length=max_length)
         input_ids = enc["input_ids"].to(model.device).long()
         attention_mask = enc.get("attention_mask")

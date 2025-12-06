@@ -4,9 +4,9 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, AutoConfig
 from .flash_attention import FlashSelfAttention
 
 class NeoXFlashAttentionAdapter(nn.Module):
-    def __init__(self, hidden_size: int, num_heads: int):
+    def __init__(self, hidden_size: int, num_heads: int, rotary_base: float = 10000.0):
         super().__init__()
-        self.flash = FlashSelfAttention(hidden_size, num_heads)
+        self.flash = FlashSelfAttention(hidden_size, num_heads, rotary_base=rotary_base)
 
     def forward(
         self,
@@ -19,7 +19,7 @@ class NeoXFlashAttentionAdapter(nn.Module):
         position_ids=None,
         **kwargs,
     ):
-        out, present = self.flash(hidden_states, past_key_value=layer_past, use_cache=use_cache)
+        out, present = self.flash(hidden_states, past_key_value=layer_past, use_cache=use_cache, position_ids=position_ids)
         if output_attentions:
             return out, present, None
         return out, present
@@ -39,7 +39,8 @@ class PythiaFlashModel(nn.Module):
             has_qkv = hasattr(module, "query_key_value") and isinstance(module.query_key_value, nn.Linear)
             has_out = hasattr(module, "dense") and isinstance(module.dense, nn.Linear)
             if has_qkv and has_out and num_heads and hidden_size:
-                adapter = NeoXFlashAttentionAdapter(hidden_size, num_heads)
+                rotary_base = getattr(self.config, "rotary_embedding_base", 10000.0)
+                adapter = NeoXFlashAttentionAdapter(hidden_size, num_heads, rotary_base=rotary_base)
                 adapter.flash.qkv_proj.weight.data.copy_(module.query_key_value.weight.data)
                 if module.query_key_value.bias is not None and adapter.flash.qkv_proj.bias is not None:
                     adapter.flash.qkv_proj.bias.data.copy_(module.query_key_value.bias.data)
