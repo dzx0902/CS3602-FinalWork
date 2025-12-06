@@ -2,6 +2,7 @@ import argparse
 import json
 import math
 import torch
+from torch.backends.cuda import sdp_kernel
 from datasets import load_dataset
 from models.pythia_baseline_model import PythiaBaselineModel
 from models.pythia_flash_model import PythiaFlashModel
@@ -67,15 +68,18 @@ def main():
     device = get_device()
     if args.mode == "baseline":
         wrapper = PythiaBaselineModel()
+        kernel_ctx = sdp_kernel(enable_flash=False, enable_math=True, enable_mem_efficient=False)
     else:
         wrapper = PythiaFlashModel()
+        kernel_ctx = sdp_kernel(enable_flash=True, enable_math=False, enable_mem_efficient=False)
     model = wrapper.to(device)
     tokenizer = wrapper.tokenizer
     model.device = device
-    if args.dataset == "wikitext":
-        res = eval_dataset(model, tokenizer, "wikitext", "test", config_name="wikitext-2-v1")
-    else:
-        res = eval_dataset(model, tokenizer, "pg19", "validation")
+    with kernel_ctx:
+        if args.dataset == "wikitext":
+            res = eval_dataset(model, tokenizer, "wikitext", "test", config_name="wikitext-2-v1")
+        else:
+            res = eval_dataset(model, tokenizer, "pg19", "validation")
     path = "results/ppl_flash.json" if args.mode == "flash" else "results/ppl_baseline.json"
     try:
         with open(path, "w", encoding="utf-8") as f:
