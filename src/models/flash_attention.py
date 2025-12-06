@@ -17,18 +17,15 @@ class FlashSelfAttention(nn.Module):
         dim = self.head_dim
         device = q.device
         dtype = q.dtype
-        inv_freq = 1.0 / (self.rotary_base ** (torch.arange(0, dim, 2, device=device, dtype=torch.float32) / dim))
-        t = seq_positions.to(torch.float32).unsqueeze(-1) * inv_freq  # (bsz, seq_len, dim/2)
-        cos = torch.cos(t).to(dtype)
-        sin = torch.sin(t).to(dtype)
-        # reshape for broadcasting: (bsz, 1, seq_len, dim/2)
-        cos = cos.unsqueeze(1)
-        sin = sin.unsqueeze(1)
-
         rotary_dim = int(dim * self.rotary_pct)
         rotary_dim = rotary_dim - (rotary_dim % 2)
         if rotary_dim <= 0:
             return q, k
+        inv_freq = 1.0 / (self.rotary_base ** (torch.arange(0, rotary_dim, 2, device=device, dtype=torch.float32) / dim))
+        t = seq_positions.to(torch.float32).unsqueeze(-1) * inv_freq  # (bsz, seq_len, rotary_dim/2)
+        cos = torch.cos(t).to(dtype).unsqueeze(1)  # (bsz, 1, seq_len, rotary_dim/2)
+        sin = torch.sin(t).to(dtype).unsqueeze(1)  # (bsz, 1, seq_len, rotary_dim/2)
+
         q_head = q[..., :rotary_dim]
         k_head = k[..., :rotary_dim]
         q_tail = q[..., rotary_dim:]
