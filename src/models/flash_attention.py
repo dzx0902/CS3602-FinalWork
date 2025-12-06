@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from transformers.models.gpt_neox.modeling_gpt_neox import apply_rotary_pos_emb
 
 class FlashSelfAttention(nn.Module):
     def __init__(self, hidden_size: int, num_heads: int, rotary_base: float = 10000.0, rotary_pct: float = 1.0, rotary_emb: nn.Module = None):
@@ -16,12 +17,28 @@ class FlashSelfAttention(nn.Module):
 
     def _apply_rope(self, q: torch.Tensor, k: torch.Tensor, position_ids: torch.Tensor):
         dim = self.head_dim
-        device = q.device
         dtype = q.dtype
         if self.rotary_emb is None:
             return q, k
-        q_rot, k_rot = self.rotary_emb.apply_rotary_pos_emb(q, k, position_ids)
-        return q_rot.to(dtype), k_rot.to(dtype)
+        rotary_dim = int(dim * self.rotary_pct)
+        rotary_dim = rotary_dim - (rotary_dim % 2)
+        if rotary_dim <= 0:
+            return q, k
+        total_seq_len = position_ids.max().item() + 1
+        try:
+            cos, sin = self.rotary_emb(k, seq_len=total_seq_len)
+        except TypeError:
+            cos, sin = self.rotary_emb(k)
+        cos = cos[position_ids].unsqueeze(1)
+        sin = sin[position_ids].unsqueeze(1)
+        q_head = q[..., :rotary_dim]
+        k_head = k[..., :rotary_dim]
+        q_tail = q[..., rotary_dim:]
+        k_tail = k[..., rotary_dim:]
+        q_rot, k_rot = apply_rotary_pos_emb(q_head, k_head, cos, sin)
+        q_out = torch.cat([q_rot.to(dtype), q_tail], dim=-1)
+        k_out = torch.cat([k_rot.to(dtype), k_tail], dim=-1)
+        return q_out, k_out
 
     def forward(self, hidden_states: torch.Tensor, past_key_value=None, use_cache: bool = False, position_ids: torch.Tensor = None, attention_mask: torch.Tensor = None):
         bsz, seq_len, _ = hidden_states.shape
