@@ -4,9 +4,9 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, AutoConfig
 from .flash_attention import FlashSelfAttention
 
 class NeoXFlashAttentionAdapter(nn.Module):
-    def __init__(self, hidden_size: int, num_heads: int, rotary_base: float = 10000.0):
+    def __init__(self, hidden_size: int, num_heads: int, rotary_base: float = 10000.0, rotary_pct: float = 1.0):
         super().__init__()
-        self.flash = FlashSelfAttention(hidden_size, num_heads, rotary_base=rotary_base)
+        self.flash = FlashSelfAttention(hidden_size, num_heads, rotary_base=rotary_base, rotary_pct=rotary_pct)
 
     def forward(
         self,
@@ -40,7 +40,8 @@ class PythiaFlashModel(nn.Module):
             has_out = hasattr(module, "dense") and isinstance(module.dense, nn.Linear)
             if has_qkv and has_out and num_heads and hidden_size:
                 rotary_base = getattr(self.config, "rotary_embedding_base", 10000.0)
-                adapter = NeoXFlashAttentionAdapter(hidden_size, num_heads, rotary_base=rotary_base)
+                rotary_pct = getattr(self.config, "rotary_pct", 1.0)
+                adapter = NeoXFlashAttentionAdapter(hidden_size, num_heads, rotary_base=rotary_base, rotary_pct=rotary_pct)
                 adapter.flash.qkv_proj.weight.data.copy_(module.query_key_value.weight.data)
                 if module.query_key_value.bias is not None and adapter.flash.qkv_proj.bias is not None:
                     adapter.flash.qkv_proj.bias.data.copy_(module.query_key_value.bias.data)

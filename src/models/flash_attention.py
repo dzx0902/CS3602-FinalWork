@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class FlashSelfAttention(nn.Module):
-    def __init__(self, hidden_size: int, num_heads: int, rotary_base: float = 10000.0):
+    def __init__(self, hidden_size: int, num_heads: int, rotary_base: float = 10000.0, rotary_pct: float = 1.0):
         super().__init__()
         self.hidden_size = hidden_size
         self.num_heads = num_heads
@@ -11,6 +11,7 @@ class FlashSelfAttention(nn.Module):
         self.qkv_proj = nn.Linear(hidden_size, 3 * hidden_size, bias=True)
         self.out_proj = nn.Linear(hidden_size, hidden_size, bias=True)
         self.rotary_base = rotary_base
+        self.rotary_pct = rotary_pct
 
     def _apply_rope(self, q: torch.Tensor, k: torch.Tensor, seq_positions: torch.Tensor):
         dim = self.head_dim
@@ -24,17 +25,31 @@ class FlashSelfAttention(nn.Module):
         cos = cos.unsqueeze(1)
         sin = sin.unsqueeze(1)
 
-        def rope(x):
-            x_even = x[..., ::2]
-            x_odd = x[..., 1::2]
-            x_rot_even = x_even * cos - x_odd * sin
-            x_rot_odd = x_odd * cos + x_even * sin
-            out = torch.empty_like(x)
-            out[..., ::2] = x_rot_even
-            out[..., 1::2] = x_rot_odd
-            return out
-
-        return rope(q), rope(k)
+        rotary_dim = int(dim * self.rotary_pct)
+        rotary_dim = rotary_dim - (rotary_dim % 2)
+        if rotary_dim <= 0:
+            return q, k
+        q_head = q[..., :rotary_dim]
+        k_head = k[..., :rotary_dim]
+        q_tail = q[..., rotary_dim:]
+        k_tail = k[..., rotary_dim:]
+        q_even = q_head[..., ::2]
+        q_odd = q_head[..., 1::2]
+        k_even = k_head[..., ::2]
+        k_odd = k_head[..., 1::2]
+        q_rot_even = q_even * cos - q_odd * sin
+        q_rot_odd = q_odd * cos + q_even * sin
+        k_rot_even = k_even * cos - k_odd * sin
+        k_rot_odd = k_odd * cos + k_even * sin
+        q_rot = torch.empty_like(q_head)
+        k_rot = torch.empty_like(k_head)
+        q_rot[..., ::2] = q_rot_even
+        q_rot[..., 1::2] = q_rot_odd
+        k_rot[..., ::2] = k_rot_even
+        k_rot[..., 1::2] = k_rot_odd
+        q_out = torch.cat([q_rot, q_tail], dim=-1)
+        k_out = torch.cat([k_rot, k_tail], dim=-1)
+        return q_out, k_out
 
     def forward(self, hidden_states: torch.Tensor, past_key_value=None, use_cache: bool = False, position_ids: torch.Tensor = None):
         bsz, seq_len, _ = hidden_states.shape
