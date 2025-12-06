@@ -7,8 +7,8 @@ from models.pythia_baseline_model import PythiaBaselineModel
 from models.pythia_flash_model import PythiaFlashModel
 from utils import get_device, set_reproducibility
 
-def eval_dataset(model, tokenizer, name: str, split: str, max_samples: int = 128, max_length: int = 512):
-    ds = load_dataset(name, split=split)
+def eval_dataset(model, tokenizer, name: str, split: str, max_samples: int = 128, max_length: int = 512, config_name: str = None):
+    ds = load_dataset(name, config_name, split=split) if config_name else load_dataset(name, split=split)
     losses = []
     count = 0
     for ex in ds:
@@ -42,7 +42,7 @@ def main():
     tokenizer = wrapper.tokenizer
     model.device = device
     if args.dataset == "wikitext":
-        res = eval_dataset(model, tokenizer, "wikitext", "test")
+        res = eval_dataset(model, tokenizer, "wikitext", "test", config_name="wikitext-2-v1")
     else:
         res = eval_dataset(model, tokenizer, "pg19", "validation")
     path = "results/ppl_flash.json" if args.mode == "flash" else "results/ppl_baseline.json"
