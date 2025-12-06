@@ -11,15 +11,24 @@ def eval_dataset(model, tokenizer, name: str, split: str, max_samples: int = 128
     ds = load_dataset(name, config_name, split=split) if config_name else load_dataset(name, split=split)
     losses = []
     count = 0
+    model.eval()
     for ex in ds:
         if count >= max_samples:
             break
         text = ex["text"] if "text" in ex else str(ex)
         enc = tokenizer(text, return_tensors="pt", truncation=True, max_length=max_length)
-        input_ids = enc["input_ids"].to(model.device)
-        outputs = model(input_ids=input_ids, labels=input_ids, return_dict=True)
-        loss = outputs.loss.detach().float().item()
-        losses.append(loss)
+        input_ids = enc["input_ids"].to(model.device).long()
+        attention_mask = enc.get("attention_mask")
+        if attention_mask is not None:
+            attention_mask = attention_mask.to(model.device)
+        if input_ids.shape[1] < 2:
+            count += 1
+            continue
+        with torch.no_grad():
+            outputs = model(input_ids=input_ids, attention_mask=attention_mask, labels=input_ids, return_dict=True)
+            loss = outputs.loss.detach().float().item()
+        if not (loss != loss):
+            losses.append(loss)
         count += 1
     if len(losses) == 0:
         return {"ppl": None, "avg_loss": None, "num_samples": 0}
