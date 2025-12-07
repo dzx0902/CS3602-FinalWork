@@ -2,7 +2,6 @@ import argparse
 import json
 import math
 import torch
-from torch.backends.cuda import sdp_kernel
 from datasets import load_dataset
 from models.pythia_baseline_model import PythiaBaselineModel
 from models.pythia_flash_model import PythiaFlashModel
@@ -63,30 +62,45 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--mode", choices=["baseline", "flash"], required=True)
     parser.add_argument("--dataset", choices=["wikitext", "pg19"], default="wikitext")
+    parser.add_argument("--max-samples", type=int, default=128)
+    parser.add_argument("--max-length", type=int, default=512)
     args = parser.parse_args()
     set_reproducibility(42)
     device = get_device()
-    if args.mode == "baseline":
-        wrapper = PythiaBaselineModel()
-        kernel_ctx = sdp_kernel(enable_flash=False, enable_math=True, enable_mem_efficient=False)
+    base_wrapper = PythiaBaselineModel()
+    flash_wrapper = PythiaFlashModel()
+    base_model = base_wrapper.to(device)
+    flash_model = flash_wrapper.to(device)
+    base_tokenizer = base_wrapper.tokenizer
+    flash_tokenizer = flash_wrapper.tokenizer
+    base_model.device = device
+    flash_model.device = device
+    if args.dataset == "wikitext":
+        base_res = eval_dataset(base_model, base_tokenizer, "wikitext", "test", max_samples=args.max_samples, max_length=args.max_length, config_name="wikitext-2-v1")
+        flash_res = eval_dataset(flash_model, flash_tokenizer, "wikitext", "test", max_samples=args.max_samples, max_length=args.max_length, config_name="wikitext-2-v1")
     else:
-        wrapper = PythiaFlashModel()
-        kernel_ctx = sdp_kernel(enable_flash=True, enable_math=False, enable_mem_efficient=False)
-    model = wrapper.to(device)
-    tokenizer = wrapper.tokenizer
-    model.device = device
-    with kernel_ctx:
-        if args.dataset == "wikitext":
-            res = eval_dataset(model, tokenizer, "wikitext", "test", config_name="wikitext-2-v1")
-        else:
-            res = eval_dataset(model, tokenizer, "pg19", "validation")
-    path = "results/ppl_flash.json" if args.mode == "flash" else "results/ppl_baseline.json"
+        base_res = eval_dataset(base_model, base_tokenizer, "pg19", "validation", max_samples=args.max_samples, max_length=args.max_length)
+        flash_res = eval_dataset(flash_model, flash_tokenizer, "pg19", "validation", max_samples=args.max_samples, max_length=args.max_length)
+    out = {
+        "baseline": base_res,
+        "flash": flash_res,
+    }
     try:
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(res, f, ensure_ascii=False, indent=2)
+        with open("results/ppl_baseline.json", "w", encoding="utf-8") as f:
+            json.dump(base_res, f, ensure_ascii=False, indent=2)
     except Exception:
         pass
-    print(json.dumps(res, ensure_ascii=False))
+    try:
+        with open("results/ppl_flash.json", "w", encoding="utf-8") as f:
+            json.dump(flash_res, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
+    if base_res["ppl"] is not None and flash_res["ppl"] is not None:
+        log_diff = abs(math.log(flash_res["ppl"]) - math.log(base_res["ppl"]))
+        out["log_ppl_diff"] = log_diff
+        if log_diff > 0.5:
+            print("Warning: PPL difference is large")
+    print(json.dumps(out, ensure_ascii=False))
 
 if __name__ == "__main__":
     main()

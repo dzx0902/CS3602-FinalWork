@@ -1,12 +1,14 @@
 import torch
 import torch.nn as nn
+import os
 from transformers import AutoModelForCausalLM, AutoTokenizer, AutoConfig
-from .flash_attention import FlashSelfAttention
+from .flash_attention import use_math_sdpa, use_flash_sdpa
 
 class NeoXFlashAttentionAdapter(nn.Module):
-    def __init__(self, hidden_size: int, num_heads: int, rotary_base: float = 10000.0, rotary_pct: float = 1.0, rotary_emb: nn.Module = None):
+    def __init__(self, original_module: nn.Module):
         super().__init__()
-        self.flash = FlashSelfAttention(hidden_size, num_heads, rotary_base=rotary_base, rotary_pct=rotary_pct, rotary_emb=rotary_emb)
+        self.original = original_module
+        self.use_flash = os.environ.get("FLASH_SDPA", "0") == "1"
 
     def forward(
         self,
@@ -19,10 +21,21 @@ class NeoXFlashAttentionAdapter(nn.Module):
         position_ids=None,
         **kwargs,
     ):
-        out, present = self.flash(hidden_states, past_key_value=layer_past, use_cache=use_cache, position_ids=position_ids, attention_mask=attention_mask)
-        if output_attentions:
-            return out, present, None
-        return out, present
+        if self.use_flash:
+            ctx = use_flash_sdpa()
+        else:
+            ctx = use_math_sdpa()
+        with ctx:
+            return self.original(
+                hidden_states=hidden_states,
+                attention_mask=attention_mask,
+                head_mask=head_mask,
+                layer_past=layer_past,
+                use_cache=use_cache,
+                output_attentions=output_attentions,
+                position_ids=position_ids,
+                **kwargs,
+            )
 
 class PythiaFlashModel(nn.Module):
     def __init__(self, model_name: str = "EleutherAI/pythia-70m"):
@@ -39,18 +52,9 @@ class PythiaFlashModel(nn.Module):
             has_qkv = hasattr(module, "query_key_value") and isinstance(module.query_key_value, nn.Linear)
             has_out = hasattr(module, "dense") and isinstance(module.dense, nn.Linear)
             if has_qkv and has_out and num_heads and hidden_size:
-                rotary_base = getattr(self.config, "rotary_embedding_base", 10000.0)
-                rotary_pct = getattr(self.config, "rotary_pct", 1.0)
-                rotary_emb = getattr(module, "rotary_emb", None)
-                adapter = NeoXFlashAttentionAdapter(hidden_size, num_heads, rotary_base=rotary_base, rotary_pct=rotary_pct, rotary_emb=rotary_emb)
-                adapter.flash.qkv_proj.weight.data.copy_(module.query_key_value.weight.data)
-                if module.query_key_value.bias is not None and adapter.flash.qkv_proj.bias is not None:
-                    adapter.flash.qkv_proj.bias.data.copy_(module.query_key_value.bias.data)
-                adapter.flash.out_proj.weight.data.copy_(module.dense.weight.data)
-                if module.dense.bias is not None and adapter.flash.out_proj.bias is not None:
-                    adapter.flash.out_proj.bias.data.copy_(module.dense.bias.data)
                 parent = self._get_parent_module(name)
                 attr = name.split(".")[-1]
+                adapter = NeoXFlashAttentionAdapter(module)
                 setattr(parent, attr, adapter)
 
     def _get_parent_module(self, module_name: str):

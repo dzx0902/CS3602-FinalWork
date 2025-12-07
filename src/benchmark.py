@@ -2,7 +2,6 @@ import argparse
 import json
 import time
 import torch
-from torch.backends.cuda import sdp_kernel
 from transformers import AutoTokenizer
 from models.pythia_baseline_model import PythiaBaselineModel
 from models.pythia_flash_model import PythiaFlashModel
@@ -51,10 +50,8 @@ def main():
     device = get_device()
     if args.mode == "baseline":
         wrapper = PythiaBaselineModel()
-        kernel_ctx = sdp_kernel(enable_flash=False, enable_math=True, enable_mem_efficient=False)
     else:
         wrapper = PythiaFlashModel()
-        kernel_ctx = sdp_kernel(enable_flash=True, enable_math=False, enable_mem_efficient=False)
     model = wrapper.to(device)
     tokenizer = wrapper.tokenizer
     with open(args.prompt, "r", encoding="utf-8") as f:
@@ -65,9 +62,8 @@ def main():
     if attention_mask is not None:
         attention_mask = attention_mask.to(device)
     peak_fn = measure_peak_memory()
-    with kernel_ctx:
-        ttft_ms, next_token, past = measure_ttft(model, input_ids, attention_mask)
-        tpot_ms, throughput = measure_tpot_and_throughput(model, next_token, past, attention_mask, args.max_new_tokens)
+    ttft_ms, next_token, past = measure_ttft(model, input_ids, attention_mask)
+    tpot_ms, throughput = measure_tpot_and_throughput(model, next_token, past, attention_mask, args.max_new_tokens)
     peak_mem_mb = peak_fn()
     out = {
         "ttft_ms": ttft_ms,
