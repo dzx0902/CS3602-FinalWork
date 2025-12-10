@@ -56,3 +56,28 @@ def set_reproducibility(seed: int = 42):
         torch.set_float32_matmul_precision("high")
     except Exception:
         pass
+
+
+
+# utils.py 末尾增加这个函数
+
+def resolve_pythia_model_name(size: str) -> str:
+    """
+    把命令行传入的 model size 映射到 EleutherAI 的完整模型名。
+
+    支持:
+      - "70m"  -> "EleutherAI/pythia-70m"
+      - "2.8b" -> "EleutherAI/pythia-2.8b"
+      - "7b"   -> "EleutherAI/pythia-6.9b"  (社区里通常叫 7B)
+    """
+    size = size.lower()
+    if size == "70m":
+        return "EleutherAI/pythia-70m"
+    if size in ("2.8b", "2.8"):
+        return "EleutherAI/pythia-2.8b"
+    if size in ("7b", "6.9b", "6.9"):
+        return "EleutherAI/pythia-6.9b"
+    # fallback：你也可以直接传完整 HF 名字
+    if size.startswith("eleutherai/pythia"):
+        return size
+    raise ValueError(f"Unknown Pythia model size: {size}")
