@@ -1,0 +1,18 @@
+{
+  "model_name": "EleutherAI/pythia-2.8b",
+  "dataset": "pg19",
+  "mode": "both",
+  "baseline": {
+    "ppl": 8.530096236575712,
+    "avg_loss": 2.1436006435707435,
+    "num_tokens": 34304,
+    "seq_len": 33828
+  },
+  "flash": {
+    "ppl": 8.626602530261499,
+    "avg_loss": 2.154850746268657,
+    "num_tokens": 34304,
+    "seq_len": 33828
+  },
+  "log_ppl_diff": 0.011250102697913267
+}

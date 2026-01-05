@@ -1,0 +1,16 @@
+{
+  "model_name": "EleutherAI/pythia-2.8b",
+  "dataset": "wikitext",
+  "mode": "both",
+  "baseline": {
+    "ppl": 81.97471516256846,
+    "avg_loss": 4.406410848038106,
+    "num_samples": 79
+  },
+  "flash": {
+    "ppl": 82.75971884976644,
+    "avg_loss": 4.415941455696203,
+    "num_samples": 79
+  },
+  "log_ppl_diff": 0.00953060765809699
+}

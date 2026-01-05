@@ -1,0 +1,91 @@
+{
+  "results": [
+    {
+      "batch_size": 1,
+      "max_new_tokens": 128,
+      "prompt_seq_len": 2454,
+      "ttft_ms": 314.6449000341818,
+      "tpot_ms": 32.79628897063786,
+      "throughput_tps": 30.491254693337055,
+      "peak_mem_mb": 20746.40625,
+      "config": {
+        "mode": "baseline",
+        "device": "cuda",
+        "model_name": "EleutherAI/pythia-2.8b",
+        "prompt_path": "src\\prompts\\long_prompt.txt",
+        "max_prompt_tokens": 4096,
+        "FLASH_SDPA": null
+      }
+    },
+    {
+      "batch_size": 1,
+      "max_new_tokens": 512,
+      "prompt_seq_len": 2454,
+      "ttft_ms": 33.71659992262721,
+      "tpot_ms": 33.207520155679,
+      "throughput_tps": 30.113660860911484,
+      "peak_mem_mb": 21140.935546875,
+      "config": {
+        "mode": "baseline",
+        "device": "cuda",
+        "model_name": "EleutherAI/pythia-2.8b",
+        "prompt_path": "src\\prompts\\long_prompt.txt",
+        "max_prompt_tokens": 4096,
+        "FLASH_SDPA": null
+      }
+    },
+    {
+      "batch_size": 1,
+      "max_new_tokens": 1024,
+      "prompt_seq_len": 2454,
+      "ttft_ms": 37.6535999821499,
+      "tpot_ms": 34.814539101459125,
+      "throughput_tps": 28.723631730000086,
+      "peak_mem_mb": 21785.787109375,
+      "config": {
+        "mode": "baseline",
+        "device": "cuda",
+        "model_name": "EleutherAI/pythia-2.8b",
+        "prompt_path": "src\\prompts\\long_prompt.txt",
+        "max_prompt_tokens": 4096,
+        "FLASH_SDPA": null
+      }
+    },
+    {
+      "batch_size": 1,
+      "max_new_tokens": 2048,
+      "prompt_seq_len": 2454,
+      "ttft_ms": 33.199200057424605,
+      "tpot_ms": 37.96839198848514,
+      "throughput_tps": 26.337696900708224,
+      "peak_mem_mb": 23070.73046875,
+      "config": {
+        "mode": "baseline",
+        "device": "cuda",
+        "model_name": "EleutherAI/pythia-2.8b",
+        "prompt_path": "src\\prompts\\long_prompt.txt",
+        "max_prompt_tokens": 4096,
+        "FLASH_SDPA": null
+      }
+    }
+  ],
+  "summary": {
+    "mode": "baseline",
+    "model_name": "EleutherAI/pythia-2.8b",
+    "device": "cuda",
+    "prompt_path": "src\\prompts\\long_prompt.txt",
+    "prompt_seq_len": 2454,
+    "max_prompt_tokens": 4096,
+    "batch_sizes": [
+      1
+    ],
+    "new_token_sizes": [
+      128,
+      512,
+      1024,
+      2048
+    ],
+    "warmup_iters": 1,
+    "FLASH_SDPA": null
+  }
+}

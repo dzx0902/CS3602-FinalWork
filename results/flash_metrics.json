@@ -1,0 +1,91 @@
+{
+  "results": [
+    {
+      "batch_size": 1,
+      "max_new_tokens": 128,
+      "prompt_seq_len": 2454,
+      "ttft_ms": 147.18009997159243,
+      "tpot_ms": 27.423716536136418,
+      "throughput_tps": 36.464787647665965,
+      "peak_mem_mb": 12031.40234375,
+      "config": {
+        "mode": "flash",
+        "device": "cuda",
+        "model_name": "EleutherAI/pythia-2.8b",
+        "prompt_path": "src\\prompts\\long_prompt.txt",
+        "max_prompt_tokens": 4096,
+        "FLASH_SDPA": "1"
+      }
+    },
+    {
+      "batch_size": 1,
+      "max_new_tokens": 512,
+      "prompt_seq_len": 2454,
+      "ttft_ms": 66.25230005010962,
+      "tpot_ms": 20.674304695391697,
+      "throughput_tps": 48.36922037929044,
+      "peak_mem_mb": 12350.697265625,
+      "config": {
+        "mode": "flash",
+        "device": "cuda",
+        "model_name": "EleutherAI/pythia-2.8b",
+        "prompt_path": "src\\prompts\\long_prompt.txt",
+        "max_prompt_tokens": 4096,
+        "FLASH_SDPA": "1"
+      }
+    },
+    {
+      "batch_size": 1,
+      "max_new_tokens": 1024,
+      "prompt_seq_len": 2454,
+      "ttft_ms": 57.39910004194826,
+      "tpot_ms": 19.13393685357046,
+      "throughput_tps": 52.263159832337195,
+      "peak_mem_mb": 12835.34765625,
+      "config": {
+        "mode": "flash",
+        "device": "cuda",
+        "model_name": "EleutherAI/pythia-2.8b",
+        "prompt_path": "src\\prompts\\long_prompt.txt",
+        "max_prompt_tokens": 4096,
+        "FLASH_SDPA": "1"
+      }
+    },
+    {
+      "batch_size": 1,
+      "max_new_tokens": 2048,
+      "prompt_seq_len": 2454,
+      "ttft_ms": 55.69619999732822,
+      "tpot_ms": 20.651793747475626,
+      "throughput_tps": 48.4219439835455,
+      "peak_mem_mb": 13806.259765625,
+      "config": {
+        "mode": "flash",
+        "device": "cuda",
+        "model_name": "EleutherAI/pythia-2.8b",
+        "prompt_path": "src\\prompts\\long_prompt.txt",
+        "max_prompt_tokens": 4096,
+        "FLASH_SDPA": "1"
+      }
+    }
+  ],
+  "summary": {
+    "mode": "flash",
+    "model_name": "EleutherAI/pythia-2.8b",
+    "device": "cuda",
+    "prompt_path": "src\\prompts\\long_prompt.txt",
+    "prompt_seq_len": 2454,
+    "max_prompt_tokens": 4096,
+    "batch_sizes": [
+      1
+    ],
+    "new_token_sizes": [
+      128,
+      512,
+      1024,
+      2048
+    ],
+    "warmup_iters": 1,
+    "FLASH_SDPA": "1"
+  }
+}
