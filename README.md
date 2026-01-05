@@ -6,6 +6,8 @@
 
 同时提供基准测试（TTFT/TPOT/吞吐/峰值显存）、ppl 评估（WikiText/PG-19）、复现实验脚本与结果存储结构。
 
+**GitHub Repository:** [https://github.com/dzx0902/CS3602-FinalWork.git](https://github.com/dzx0902/CS3602-FinalWork.git)
+
 ## 环境准备
 - 推荐环境：CUDA 12.1 + `torch==2.1.2+cu121`，GPU：Ada (如 4090D)
 - 依赖安装：
